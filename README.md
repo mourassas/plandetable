@@ -188,4 +188,26 @@ document.addEventListener('click',e=>{
   const d=e.target.dataset;
   if(d.tab){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b===e.target));$('plan').classList.toggle('hide',d.tab!=='plan');$('imp').classList.toggle('hide',d.tab!=='imp');render()}
   else if(d.un)place(d.un,null);
-  else if(d.delg){data.guests=data.guests.filter(x=
+  else if(d.delg){data.guests=data.guests.filter(x=>x.id!==d.delg);changed()}
+  else if(d.delt){const t=tbl(d.delt);if(confirm(`Supprimer la table « ${t.name} » ? Ses invités repasseront sans table.`)){data.guests.forEach(g=>{if(g.table===t.id)g.table=null});data.tables=data.tables.filter(x=>x!==t);changed()}}
+  else if(d.edt){const t=tbl(d.edt),n=prompt('Nom de la table',t.name);if(n===null)return;
+    const s0=parseInt(prompt('Nombre de places',t.seats),10);if(!s0||s0<1)return;const s=Math.min(30,s0);
+    const out=seated(t.id).map(g=>({g,i:data.guests.indexOf(g)})).sort((a,b)=>(a.g.at||0)-(b.g.at||0)||a.i-b.i).slice(s).map(o=>o.g).reverse();
+    out.forEach(g=>g.table=null);
+    t.name=n.trim()||t.name;t.seats=s;changed();
+    if(out.length)status(out.length+' invité'+(out.length>1?'s remis':' remis')+' dans la liste : '+out.map(nm).join(', '))}
+});
+document.addEventListener('change',e=>{const d=e.target.dataset;
+  if(d.place&&e.target.value)place(d.place,e.target.value);
+  else if(d.col){data.guests.find(g=>g.id===d.col).color=e.target.value;changed()}
+  else if(d.leg!==undefined){data.legend[d.leg]=e.target.value.trim();changed()}});
+let drag=null;
+document.addEventListener('dragstart',e=>{const g=e.target.closest('[data-g]');if(g){drag=g.dataset.g;e.dataTransfer.setData('text/plain',drag)}});
+document.addEventListener('dragover',e=>{const z=e.target.closest('.t,#pool');if(z&&drag){e.preventDefault();document.querySelectorAll('.over').forEach(x=>x.classList.remove('over'));z.classList.add('over')}});
+document.addEventListener('dragend',()=>{drag=null;document.querySelectorAll('.over').forEach(x=>x.classList.remove('over'))});
+document.addEventListener('drop',e=>{const z=e.target.closest('.t,#pool');if(z&&drag){e.preventDefault();const id=drag;drag=null;z.classList.remove('over');place(id,z.dataset.t||null)}});
+
+if(sessionStorage.getItem('seat-ok')){$('lock').classList.add('hide');start()}else $('lp').focus();
+</script>
+</body>
+</html>
