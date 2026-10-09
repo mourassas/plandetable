@@ -35,18 +35,20 @@ button.x{border:0;background:none;color:var(--mute);padding:2px 6px}button.x:hov
 #pool{margin-bottom:0}
 #pl .g span{white-space:normal;overflow:visible;overflow-wrap:anywhere}
 #pool.over,.t.over{outline:2px dashed var(--acc)}
-.tables{display:grid;grid-template-columns:1fr 1fr;gap:14px;height:var(--avail,640px);overflow-y:auto;grid-auto-rows:calc((var(--avail,640px) - 14px)/2);align-content:start;padding-right:4px}
-@media(max-width:900px){.tables{grid-template-columns:1fr;height:auto;grid-auto-rows:minmax(250px,auto)}}
+.tables{height:var(--avail,640px)}.tables .t{height:100%}
+@media(max-width:900px){.tables{height:auto}.tables .t{height:auto}.tb{flex-direction:column;align-items:center}.round{max-width:100%}}
 .t{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
-.tb{display:flex;gap:10px;flex:1;min-height:0}.tl{flex:1;min-width:0;overflow-y:auto}.tl .g{padding:3px 6px;margin-bottom:4px;font-size:14px}
+.tb{display:flex;gap:20px;flex:1;min-height:0;align-items:flex-start}.tl{flex:1;min-width:0;max-height:100%;overflow-y:auto}.tl .g{padding:7px 12px;margin-bottom:6px;font-size:16px}
+.nav{display:flex;align-items:center;gap:6px}.nav button{padding:3px 12px;font-size:20px;line-height:1.1}.nav select{font:600 17px Georgia,serif;max-width:280px}.nav small{margin-left:4px}
+.ctr{position:absolute;inset:24%;display:grid;place-content:center;text-align:center;overflow:hidden;font-family:Georgia,serif;font-weight:600;font-size:calc(var(--rs)*.06);line-height:1.2;pointer-events:none}.ctr span{font:400 calc(var(--rs)*.035) system-ui,sans-serif;color:var(--mute)}
 #pl .g{padding:3px 8px;margin-bottom:4px;font-size:14px}
 .t.full{border-color:var(--full)}
 .th{display:flex;justify-content:space-between;align-items:center;gap:6px}
 .th b{font:600 17px Georgia,serif}
 .left{font-size:13px;margin:0 0 4px;color:var(--ok)}.full .left{color:var(--full)}
-.round{--rs:clamp(120px,calc((var(--avail,640px) - 14px)/2 - 85px),170px);position:relative;flex:0 0 var(--rs);width:var(--rs);height:var(--rs)}
+.round{--rs:clamp(200px,calc(var(--avail,640px) - 125px),460px);position:relative;flex:0 0 var(--rs);width:var(--rs);height:var(--rs)}
 .round:before{content:"";position:absolute;inset:24%;border-radius:50%;border:2px solid var(--line);background:var(--bg)}
-.seat{position:absolute;width:26px;height:26px;margin:-13px;border-radius:50%;background:var(--free);display:grid;place-items:center;font-size:10px;font-weight:700;border:1px solid var(--line)}
+.seat{position:absolute;aspect-ratio:1;border-radius:50%;background:var(--free);display:grid;place-items:center;font-weight:700;border:1px solid var(--line)}
 .seat.on{cursor:pointer}
 .empty{color:var(--mute);font-style:italic;text-align:center;padding:10px}
 #st{font-size:13px;color:var(--mute)}#st.err{color:#c0392b}
@@ -123,7 +125,7 @@ const DB=()=>FIREBASE_URL?FIREBASE_URL.replace(/\/$/,'')+'/'+encodeURIComponent(
 const arr=x=>Array.isArray(x)?x.filter(Boolean):Object.values(x||{});
 const toDb=d=>({guests:d.guests,tables:d.tables,legend:Object.fromEntries(Object.entries(d.legend||{}).map(([k,v])=>[k.replace('#',''),v||'']))});
 const fromDb=r=>({guests:arr(r.guests),tables:arr(r.tables),legend:Object.fromEntries(Object.entries(r.legend||{}).map(([k,v])=>['#'+k,v]))});
-let remoteInit=false,chain=Promise.resolve(),es=null;
+let cur=null,remoteInit=false,chain=Promise.resolve(),es=null;
 const hhmm=()=>new Date().toLocaleTimeString('fr-FR');
 function load(){
   try{data=JSON.parse(localStorage.getItem('seat-local')||'')}catch(e){}norm();render();
@@ -178,7 +180,8 @@ function renderAll(){
   $('s1').textContent=data.guests.length;$('s2').textContent=placed;$('s3').textContent=free.length;$('s4').textContent=cap-placed;$('pc').textContent=free.length;
   $('pl').innerHTML=shown.length?shown.map(guestRow).join(''):'<div class="empty">'+(free.length?'Aucun invité trouvé.':data.guests.length?'Tout le monde a une table.':'Ajoutez ou importez des invités (onglet 2).')+'</div>';
   const rows=$('pl').children;if(!rows.length||rows[0].offsetHeight){const cap='calc(var(--avail,640px) - 152px)';$('pl').style.maxHeight=rows.length>15?`min(${rows[14].offsetTop+rows[14].offsetHeight-rows[0].offsetTop}px,${cap})`:cap}
-  $('tables').innerHTML=data.tables.length?data.tables.map(tableCard).join(''):'<div class="panel empty">Créez ou importez des tables (onglet 2).</div>';
+  const ct=tbl(cur)||data.tables[0];cur=ct?ct.id:null;
+  $('tables').innerHTML=ct?tableCard(ct):'<div class="panel empty">Créez ou importez des tables (onglet 2).</div>';
   // onglet 2
   const cols=[...new Set(data.guests.map(g=>g.color))];
   $('legend').innerHTML=cols.length?'<b>Régimes :</b>'+cols.map(c=>`<label><span class="dot" style="background:${c}"></span><input data-leg="${c}" value="${esc(data.legend[c]||'')}" placeholder="Nommer ce régime"></label>`).join(''):'';
@@ -189,17 +192,22 @@ function guestRow(g){
   return `<div class="g" draggable="true" data-g="${g.id}"><span class="dot" style="background:${g.color}" title="${esc(data.legend[g.color]||'')}"></span><span>${esc(g.last)} ${esc(g.first)}</span></div>`;
 }
 function tableCard(t){
-  const gs=sorted(seated(t.id)),n=gs.length,left=t.seats-n,R=70;
+  const gs=sorted(seated(t.id)),n=gs.length,left=t.seats-n,p=Math.min(11,213/t.seats);
   let seats='';
   for(let i=0;i<t.seats;i++){
-    const a=2*Math.PI*i/t.seats-Math.PI/2,x=50+41*Math.cos(a),y=50+41*Math.sin(a),g=gs[i];
-    seats+=g?`<div class="seat on" style="left:${x}%;top:${y}%;background:${g.color};color:${fg(g.color)}" title="${esc(nm(g))} (cliquer pour retirer)" data-un="${g.id}" draggable="true" data-g="${g.id}">${esc((g.first[0]||'')+(g.last[0]||'')).toUpperCase()}</div>`
-      :`<div class="seat" style="left:${x}%;top:${y}%"></div>`;
+    const a=2*Math.PI*i/t.seats-Math.PI/2,g=gs[i];
+    const st=`left:${50+40*Math.cos(a)}%;top:${50+40*Math.sin(a)}%;width:calc(var(--rs)*${p/100});margin:calc(var(--rs)*${-p/200});font-size:calc(var(--rs)*${(p*.0038).toFixed(4)})`;
+    seats+=g?`<div class="seat on" style="${st};background:${g.color};color:${fg(g.color)}" title="${esc(nm(g))} (cliquer pour retirer)" data-un="${g.id}" draggable="true" data-g="${g.id}">${esc((g.first[0]||'')+(g.last[0]||'')).toUpperCase()}</div>`
+      :`<div class="seat" style="${st}"></div>`;
   }
+  const m=data.tables.length,idx=data.tables.indexOf(t);
+  const opts=data.tables.map(x=>`<option value="${x.id}" ${x===t?'selected':''}>${esc(x.name)} (${seated(x.id).length}/${x.seats})</option>`).join('');
   return `<div class="t ${left<=0?'full':''}" data-t="${t.id}">
-  <div class="th"><b>${esc(t.name)}</b><span><button class="x" data-edt="${t.id}" title="Modifier">✎</button><button class="x" data-delt="${t.id}" title="Supprimer">✕</button></span></div>
+  <div class="th"><div class="nav"><button data-nav="-1" title="Table précédente" ${m<2?'disabled':''}>‹</button><select data-seltab aria-label="Choisir une table">${opts}</select><button data-nav="1" title="Table suivante" ${m<2?'disabled':''}>›</button><small>${idx+1}/${m}</small></div>
+  <span><button class="x" data-edt="${t.id}" title="Modifier">✎</button><button class="x" data-delt="${t.id}" title="Supprimer">✕</button></span></div>
   <p class="left">${left>0?left+' place'+(left>1?'s':'')+' restante'+(left>1?'s':'')+' sur '+t.seats:'Table complète ('+t.seats+' places)'}</p>
-  <div class="tb"><div class="round">${seats}</div><div class="tl">${gs.map(g=>`<div class="g" draggable="true" data-g="${g.id}"><span class="dot" style="background:${g.color}" title="${esc(data.legend[g.color]||'')}"></span><span>${esc(g.last)} ${esc(g.first)}</span><button class="x" data-un="${g.id}" title="Retirer de la table">↩</button></div>`).join('')}</div></div></div>`;
+  <div class="tb"><div class="round">${seats}<div class="ctr">${esc(t.name)}<span>${n}/${t.seats}</span></div></div>
+  <div class="tl">${gs.length?gs.map(g=>`<div class="g" draggable="true" data-g="${g.id}"><span class="dot" style="background:${g.color}" title="${esc(data.legend[g.color]||'')}"></span><span>${esc(g.last)} ${esc(g.first)}</span><button class="x" data-un="${g.id}" title="Retirer de la table">↩</button></div>`).join(''):'<div class="empty">Aucun convive. Glissez des invités sur cette table.</div>'}</div></div></div>`;
 }
 const lines=t=>t.split(/\r?\n/).map(l=>l.split(/[;\t,]/).map(s=>s.trim())).filter(r=>r[0]);
 function readFile(inp,ta){const f=inp.files[0];if(f)f.text().then(t=>{ta.value=t})}
@@ -213,6 +221,7 @@ $('ft').onsubmit=e=>{e.preventDefault();data.tables.push({id:uid(),name:$('tn').
 document.addEventListener('click',e=>{
   const d=e.target.dataset;
   if(d.tab){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b===e.target));$('plan').classList.toggle('hide',d.tab!=='plan');$('imp').classList.toggle('hide',d.tab!=='imp');render()}
+  else if(d.nav){const i=data.tables.findIndex(x=>x.id===cur),m=data.tables.length;cur=data.tables[(i+Number(d.nav)+m)%m].id;render()}
   else if(d.un)place(d.un,null);
   else if(d.delg){data.guests=data.guests.filter(x=>x.id!==d.delg);changed()}
   else if(d.delt){const t=tbl(d.delt);if(confirm(`Supprimer la table « ${t.name} » ? Ses invités repasseront sans table.`)){data.guests.forEach(g=>{if(g.table===t.id)g.table=null});data.tables=data.tables.filter(x=>x!==t);changed()}}
@@ -224,7 +233,7 @@ document.addEventListener('click',e=>{
     if(out.length)status(out.length+' invité'+(out.length>1?'s remis':' remis')+' dans la liste : '+out.map(nm).join(', '))}
 });
 document.addEventListener('change',e=>{const d=e.target.dataset;
-  if(d.place&&e.target.value)place(d.place,e.target.value);
+  if(d.seltab!==undefined){cur=e.target.value;render()}
   else if(d.col){data.guests.find(g=>g.id===d.col).color=e.target.value;changed()}
   else if(d.leg!==undefined){data.legend[d.leg]=e.target.value.trim();changed()}});
 let drag=null;
