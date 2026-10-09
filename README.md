@@ -35,7 +35,8 @@ button.x{border:0;background:none;color:var(--mute);padding:2px 6px}button.x:hov
 #pool{margin-bottom:0}
 #pl .g span{white-space:normal;overflow:visible;overflow-wrap:anywhere}
 #pool.over,.t.over{outline:2px dashed var(--acc)}
-.tables{height:var(--avail,640px)}.tables .t{height:100%}
+.rightcol{min-width:0}.slrow{display:flex;align-items:center;gap:10px;height:30px;color:var(--mute);font-size:13px}.slrow.hide{display:none}.slrow input{flex:1;padding:0;height:20px;accent-color:var(--acc)}
+.tables{height:calc(var(--avail,640px) - 34px)}.tables .t{height:100%}
 @media(max-width:900px){.tables{height:auto}.tables .t{height:auto}.tb{flex-direction:column;align-items:center}.round{max-width:100%}}
 .t{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .tb{display:flex;gap:20px;flex:1;min-height:0;align-items:flex-start}.tl{flex:1;min-width:0;max-height:100%;overflow-y:auto}.tl .g{padding:7px 12px;margin-bottom:6px;font-size:16px}
@@ -46,7 +47,7 @@ button.x{border:0;background:none;color:var(--mute);padding:2px 6px}button.x:hov
 .th{display:flex;justify-content:space-between;align-items:center;gap:6px}
 .th b{font:600 17px Georgia,serif}
 .left{font-size:13px;margin:0 0 4px;color:var(--ok)}.full .left{color:var(--full)}
-.round{--rs:clamp(200px,calc(var(--avail,640px) - 125px),460px);position:relative;flex:0 0 var(--rs);width:var(--rs);height:var(--rs)}
+.round{--rs:clamp(200px,calc(var(--avail,640px) - 160px),460px);position:relative;flex:0 0 var(--rs);width:var(--rs);height:var(--rs)}
 .round:before{content:"";position:absolute;inset:24%;border-radius:50%;border:2px solid var(--line);background:var(--bg)}
 .seat{position:absolute;aspect-ratio:1;border-radius:50%;background:var(--free);display:grid;place-items:center;font-weight:700;border:1px solid var(--line)}
 .seat.on{cursor:pointer}
@@ -59,6 +60,19 @@ dialog{border:1px solid var(--line);border-radius:10px;background:var(--card);co
 dialog label.l{display:block;margin:8px 0 2px;font-size:13px;color:var(--mute)}dialog input{width:100%}
 small{color:var(--mute)}.hide{display:none}
 #lock{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:9}#lock.hide{display:none}#lock form{flex-direction:column;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:28px;width:300px}#lock input{width:100%;flex:none}
+#print{display:none}
+@media print{
+@page{size:A4;margin:12mm}
+body>*:not(#print){display:none!important}
+#print{display:block}
+body{background:#fff;color:#111;padding:0;max-width:none}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#print h1{font-size:22pt;margin:0 0 4mm}#print h3{font:600 15pt Georgia,serif;margin:0 0 3mm}#print h3 small{font:400 10pt system-ui,sans-serif;color:#555}
+.lg{display:flex;flex-wrap:wrap;gap:2mm 6mm;margin:0 0 6mm;font-size:10pt}
+.pt{display:flex;gap:10mm;align-items:center;break-inside:avoid;margin:0 0 4mm;padding-bottom:4mm;border-bottom:1px solid #ccc}
+.pt .round{flex:0 0 62mm}.ptl{flex:1}.ptl ol{margin:0;padding:0;list-style:none;column-gap:8mm}.ptl li{display:flex;align-items:center;gap:2mm;font-size:11pt;line-height:1.2;padding:.4mm 0;break-inside:avoid}
+.ptl .dot{flex:0 0 3.5mm;width:3.5mm;height:3.5mm;min-width:3.5mm}
+}
 </style>
 </head>
 <body>
@@ -68,14 +82,14 @@ small{color:var(--mute)}.hide{display:none}
   <div class="stats">
     <div><b id="s1">0</b> invités</div><div><b id="s2">0</b> placés</div>
     <div><b id="s3">0</b> sans table</div><div><b id="s4">0</b> places libres</div>
-    <button id="csvBtn" class="p">Exporter les tables (.csv)</button><button id="exBtn">Sauvegarder (.json)</button><button onclick="$('imFile').click()">Restaurer</button><input type="file" id="imFile" accept=".json" class="hide"><button onclick="logout()">Se déconnecter</button>
+    <button id="pdfBtn" class="p">Exporter le schéma (PDF)</button><button id="csvBtn" class="p">Exporter les tables (.csv)</button><button id="exBtn">Sauvegarder (.json)</button><button onclick="$('imFile').click()">Restaurer</button><input type="file" id="imFile" accept=".json" class="hide"><button onclick="logout()">Se déconnecter</button>
   </div>
 </header>
 <nav><button data-tab="plan" class="on">1 · Plan des tables</button><button data-tab="imp">2 · Invités et tables</button></nav>
 
 <section id="plan" class="layout">
   <div class="side"><div class="panel" id="pool"><details open><summary>Invités à placer (<span id="pc">0</span>)</summary><input id="gs" type="search" placeholder="Rechercher un invité…" aria-label="Rechercher un invité" style="width:100%;margin-bottom:8px"><div id="pl"></div></details></div></div>
-  <div class="tables" id="tables"></div>
+  <div class="rightcol"><div class="slrow" id="slrow"><span>Tables</span><input type="range" id="tslider" min="0" max="0" value="0" aria-label="Défiler parmi les tables"><span id="slc">1/1</span></div><div class="tables" id="tables"></div></div>
 </section>
 
 <section id="imp" class="hide">
@@ -101,6 +115,7 @@ small{color:var(--mute)}.hide{display:none}
 </section>
 
 
+<div id="print"></div>
 <script>
 const $=id=>document.getElementById(id);
 let data={guests:[],tables:[],legend:{}},sha=null,dirty=false,busy=false,timer=null;
@@ -150,6 +165,10 @@ function save(){
   if(DB())push();else status('Enregistré '+hhmm());
 }
 $('gs').oninput=render;
+$('tslider').oninput=e=>{const t=data.tables[+e.target.value];if(t){cur=t.id;render()}};
+$('pdfBtn').onclick=()=>{if(!data.tables.length){alert('Créez d\'abord au moins une table.');return}
+  $('print').innerHTML=printHtml();const old=document.title;document.title='Plan de table - Mariage des Mouras';
+  addEventListener('afterprint',()=>{document.title=old;$('print').innerHTML=''},{once:true});window.print()};
 $('delAllG').onclick=()=>{if(data.guests.length&&confirm(`Supprimer les ${data.guests.length} invités ?`)){data.guests=[];changed()}};
 $('delAllT').onclick=()=>{if(data.tables.length&&confirm(`Supprimer les ${data.tables.length} tables ? Les invités resteront dans la liste, sans table.`)){data.guests.forEach(g=>g.table=null);data.tables=[];changed()}};
 $('csvBtn').onclick=()=>{
@@ -181,6 +200,7 @@ function renderAll(){
   $('pl').innerHTML=shown.length?shown.map(guestRow).join(''):'<div class="empty">'+(free.length?'Aucun invité trouvé.':data.guests.length?'Tout le monde a une table.':'Ajoutez ou importez des invités (onglet 2).')+'</div>';
   const rows=$('pl').children;if(!rows.length||rows[0].offsetHeight){const cap='calc(var(--avail,640px) - 152px)';$('pl').style.maxHeight=rows.length>15?`min(${rows[14].offsetTop+rows[14].offsetHeight-rows[0].offsetTop}px,${cap})`:cap}
   const ct=tbl(cur)||data.tables[0];cur=ct?ct.id:null;
+  {const m=data.tables.length,i=Math.max(0,data.tables.indexOf(ct)),sl=$('tslider');sl.max=Math.max(0,m-1);sl.value=i;$('slrow').classList.toggle('hide',m<2);$('slc').textContent=(i+1)+'/'+m}
   $('tables').innerHTML=ct?tableCard(ct):'<div class="panel empty">Créez ou importez des tables (onglet 2).</div>';
   // onglet 2
   const cols=[...new Set(data.guests.map(g=>g.color))];
@@ -191,15 +211,30 @@ function renderAll(){
 function guestRow(g){
   return `<div class="g" draggable="true" data-g="${g.id}"><span class="dot" style="background:${g.color}" title="${esc(data.legend[g.color]||'')}"></span><span>${esc(g.last)} ${esc(g.first)}</span></div>`;
 }
-function tableCard(t){
-  const gs=sorted(seated(t.id)),n=gs.length,left=t.seats-n,p=Math.min(11,213/t.seats);
-  let seats='';
+function seatsHtml(t,gs){
+  const p=Math.min(11,213/t.seats);let seats='';
   for(let i=0;i<t.seats;i++){
     const a=2*Math.PI*i/t.seats-Math.PI/2,g=gs[i];
     const st=`left:${50+40*Math.cos(a)}%;top:${50+40*Math.sin(a)}%;width:calc(var(--rs)*${p/100});margin:calc(var(--rs)*${-p/200});font-size:calc(var(--rs)*${(p*.0038).toFixed(4)})`;
     seats+=g?`<div class="seat on" style="${st};background:${g.color};color:${fg(g.color)}" title="${esc(nm(g))} (cliquer pour retirer)" data-un="${g.id}" draggable="true" data-g="${g.id}">${esc((g.first[0]||'')+(g.last[0]||'')).toUpperCase()}</div>`
       :`<div class="seat" style="${st}"></div>`;
   }
+  return seats;
+}
+function printHtml(){
+  const li=g=>`<li><span class="dot" style="background:${g.color}"></span>${esc(g.last)} ${esc(g.first)}</li>`;
+  const cols=[...new Set(data.guests.map(g=>g.color))].filter(c=>data.legend[c]);
+  const lg=cols.length?`<div class="lg">${cols.map(c=>`<span><span class="dot" style="display:inline-block;vertical-align:middle;margin-right:1.5mm;background:${c}"></span>${esc(data.legend[c])}</span>`).join('')}</div>`:'';
+  const blocks=data.tables.map(t=>{const gs=sorted(seated(t.id)),left=t.seats-gs.length;
+    return `<section class="pt"><div class="round" style="--rs:62mm">${seatsHtml(t,gs)}<div class="ctr">${esc(t.name)}<span>${gs.length}/${t.seats}</span></div></div>
+    <div class="ptl"><h3>${esc(t.name)} <small>${gs.length}/${t.seats} places${left>0?' · '+left+' libre'+(left>1?'s':''):' · complète'}</small></h3><ol style="column-count:${gs.length>10?2:1}">${gs.map(li).join('')||'<li>Aucun convive</li>'}</ol></div></section>`}).join('');
+  const free=sorted(data.guests.filter(g=>!g.table||!tbl(g.table)));
+  const rest=free.length?`<section class="pt"><div class="ptl"><h3>Sans table <small>${free.length} invité${free.length>1?'s':''}</small></h3><ol style="column-count:3">${free.map(li).join('')}</ol></div></section>`:'';
+  return `<h1>Mariage des Mouras · Plan de table</h1>${lg}${blocks}${rest}`;
+}
+function tableCard(t){
+  const gs=sorted(seated(t.id)),n=gs.length,left=t.seats-n,p=Math.min(11,213/t.seats);
+  const seats=seatsHtml(t,gs);
   const m=data.tables.length,idx=data.tables.indexOf(t);
   const opts=data.tables.map(x=>`<option value="${x.id}" ${x===t?'selected':''}>${esc(x.name)} (${seated(x.id).length}/${x.seats})</option>`).join('');
   return `<div class="t ${left<=0?'full':''}" data-t="${t.id}">
