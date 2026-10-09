@@ -2,7 +2,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mariage des Mouras</title>
+<title>Mariage des Mourassas</title>
 <style>
 :root{--bg:#f5f3ec;--card:#fcfbf7;--ink:#1e2b24;--mute:#66756c;--line:#d8dccd;--acc:#2f5d46;--free:#e3e8dc;--ok:#2f7a55;--full:#a8741a}
 *{box-sizing:border-box}
