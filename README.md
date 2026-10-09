@@ -2,7 +2,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mariage des Mourassas</title>
+<title>Mariage des Mouras</title>
 <style>
 :root{--bg:#f5f3ec;--card:#fcfbf7;--ink:#1e2b24;--mute:#66756c;--line:#d8dccd;--acc:#2f5d46;--free:#e3e8dc;--ok:#2f7a55;--full:#a8741a}
 *{box-sizing:border-box}
@@ -104,6 +104,8 @@ const $=id=>document.getElementById(id);
 let data={guests:[],tables:[],legend:{}},sha=null,dirty=false,busy=false,timer=null;
 /* ====== À MODIFIER ====== */
 const MOT_DE_PASSE='0000';
+const FIREBASE_URL='https://amphi-blanc---voeux-finaux-default-rtdb.europe-west1.firebasedatabase.app';          // ex. https://mariage-mouras-default-rtdb.europe-west1.firebasedatabase.app
+const CHEMIN='mouras-d60cklppdop1wvql'; // longue suite de lettres/chiffres de votre choix (sert de clé secrète)
 /* ======================== */
 function start(){load()}
 function logout(){sessionStorage.removeItem('seat-ok');location.reload()}
@@ -117,9 +119,34 @@ const fg=h=>{const n=parseInt(h.slice(1),16),l=.3*(n>>16)+.59*((n>>8)&255)+.11*(
 const nm=g=>`${g.first} ${g.last}`.trim();
 const norm=()=>{data.guests=(data.guests||[]).map(g=>{if(g.last===undefined){const p=(g.name||'').trim().split(/\s+/);g.first=p.shift()||'';g.last=p.join(' ');delete g.name}g.color=g.color||'#cccccc';return g});data.tables=data.tables||[];data.legend=data.legend||{}};
 
-function load(){try{data=JSON.parse(localStorage.getItem('seat-local')||'')}catch(e){}norm();status('Données enregistrées dans ce navigateur');render()}
+const DB=()=>FIREBASE_URL?FIREBASE_URL.replace(/\/$/,'')+'/'+encodeURIComponent(CHEMIN)+'.json':'';
+const arr=x=>Array.isArray(x)?x.filter(Boolean):Object.values(x||{});
+const toDb=d=>({guests:d.guests,tables:d.tables,legend:Object.fromEntries(Object.entries(d.legend||{}).map(([k,v])=>[k.replace('#',''),v||'']))});
+const fromDb=r=>({guests:arr(r.guests),tables:arr(r.tables),legend:Object.fromEntries(Object.entries(r.legend||{}).map(([k,v])=>['#'+k,v]))});
+let remoteInit=false,chain=Promise.resolve(),es=null;
+const hhmm=()=>new Date().toLocaleTimeString('fr-FR');
+function load(){
+  try{data=JSON.parse(localStorage.getItem('seat-local')||'')}catch(e){}norm();render();
+  if(!DB()){status('Mode local : données propres à ce navigateur (non partagées)');return}
+  status('Connexion…');
+  es=new EventSource(DB());
+  es.onopen=()=>status('Synchronisé en direct');
+  es.onerror=()=>status('Connexion perdue, nouvelle tentative…',1);
+  es.addEventListener('put',e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m&&m.path==='/')applyRemote(m.data)});
+}
+function applyRemote(r){
+  if(r===null){if(!remoteInit){remoteInit=true;if(data.guests.length||data.tables.length)push()}return}
+  remoteInit=true;data=fromDb(r);norm();render();status('Synchronisé '+hhmm());
+}
+function push(){
+  const body=JSON.stringify(toDb(data));status('Envoi…');
+  chain=chain.then(()=>fetch(DB(),{method:'PUT',body})).then(r=>{if(!r.ok)throw 0;status('Synchronisé '+hhmm())}).catch(()=>status('Échec de l\'envoi : vérifiez la connexion et l\'adresse Firebase',1));
+}
 function changed(){render();save()}
-function save(){try{localStorage.setItem('seat-local',JSON.stringify(data));status('Enregistré '+new Date().toLocaleTimeString('fr-FR'))}catch(e){status('Enregistrement impossible',1)}}
+function save(){
+  try{localStorage.setItem('seat-local',JSON.stringify(data))}catch(e){}
+  if(DB())push();else status('Enregistré '+hhmm());
+}
 $('gs').oninput=render;
 $('delAllG').onclick=()=>{if(data.guests.length&&confirm(`Supprimer les ${data.guests.length} invités ?`)){data.guests=[];changed()}};
 $('delAllT').onclick=()=>{if(data.tables.length&&confirm(`Supprimer les ${data.tables.length} tables ? Les invités resteront dans la liste, sans table.`)){data.guests.forEach(g=>g.table=null);data.tables=[];changed()}};
